@@ -4,8 +4,8 @@ import numpy as np
 from pathlib import Path
 
 # Configuration
-dataset_path = Path.home() / "git/pix2pixHD/datasets/Oculus2Didson"
-target_size = 128  # Must be a power of 2 (128, 256, 512)
+dataset_path = Path.home() / "git/pix2pixHD/datasets/Oculus2DidsonPad"
+target_size = 256  # Must be a power of 2 (128, 256, 512)
 
 def pad_dataset():
     for folder in ['train_A', 'train_B']:
@@ -40,7 +40,7 @@ def pad_dataset():
             # Overwrite the original image with the padded version
             cv2.imwrite(str(img_path), padded_img)
 
-    print("Finished padding all images to 128x128.")
+    print(f"Finished padding all images to {target_size}x{target_size}.")
 
 if __name__ == "__main__":
     pad_dataset()
