@@ -10,7 +10,7 @@ import numpy as np
 class ResultCurator:
     def __init__(self, root, base_results_dir):
         self.root = root
-        self.root.title("Sonar Result Curator")
+        self.root.title("Sonar Result Curator (JET Edition)")
         self.base_dir = Path(base_results_dir)
         self.curated_dir = Path("./Curated_Final_Report")
         self.curated_dir.mkdir(exist_ok=True)
@@ -39,7 +39,7 @@ class ResultCurator:
         self.image_list = sorted(list(self.current_exp_dir.glob("*_synthesized_image.jpg")))
         
         if not self.image_list:
-            messagebox.showwarning("Warning", "No images found in this experiment.")
+            messagebox.showwarning("Warning", "No images found in this experiment. Run build_final_report.py first!")
             return
 
         self.exp_report_dir = self.curated_dir / selected_exp
@@ -75,6 +75,7 @@ class ResultCurator:
         self.label_info.config(text=f"Current: {img_p.name} ({self.index+1}/{len(self.image_list)})")
 
         base = str(img_p).replace("_synthesized_image.jpg", "")
+        # Matches exactly what the report builder copies over
         paths = [Path(base + "_src_oculus.jpg"), img_p, Path(base + "_gt_didson.jpg")]
         
         row_gray = []
@@ -84,18 +85,18 @@ class ResultCurator:
             if p.exists():
                 img = cv2.imread(str(p))
                 img = cv2.resize(img, (250, 250))
-                # Grayscale row
                 row_gray.append(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-                # JET row
+                
                 gray_v = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 jet_v = cv2.applyColorMap(gray_v, cv2.COLORMAP_JET)
                 row_jet.append(cv2.cvtColor(jet_v, cv2.COLOR_BGR2RGB))
             else:
+                # Fallback visual cue if file wasn't created yet
                 blank = np.zeros((250, 250, 3), dtype=np.uint8)
+                cv2.putText(blank, "Missing File", (40, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
                 row_gray.append(blank)
                 row_jet.append(blank)
 
-        # Combine into a 2x3 grid
         top_row = np.hstack(row_gray)
         bottom_row = np.hstack(row_jet)
         full_display = np.vstack((top_row, bottom_row))
@@ -108,7 +109,6 @@ class ResultCurator:
         img_p = self.image_list[self.index]
         prefix = img_p.name.replace("_synthesized_image.jpg", "")
         
-        # Save standard images and their JET maps for the report
         jet_folder = self.exp_report_images / "jet_maps"
         jet_folder.mkdir(exist_ok=True)
         
@@ -117,7 +117,6 @@ class ResultCurator:
             src = self.current_exp_dir / (prefix + s)
             if src.exists():
                 shutil.copy(src, self.exp_report_images / (prefix + s))
-                # Create and save JET version for report
                 img = cv2.imread(str(src))
                 jet = cv2.applyColorMap(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.COLORMAP_JET)
                 cv2.imwrite(str(jet_folder / (prefix + s)), jet)
@@ -150,7 +149,6 @@ class ResultCurator:
                 <div style='text-align:center; color:#555; margin-top:10px;'>{prefix}</div>
             </div>"""
         
-        html.strip()
         with open(self.exp_report_dir / "curated_jet_report.html", "w") as f:
             f.write(html)
         

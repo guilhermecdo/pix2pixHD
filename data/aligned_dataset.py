@@ -6,31 +6,31 @@ from PIL import Image
 class AlignedDataset(BaseDataset):
     def initialize(self, opt):
         self.opt = opt
-        self.root = opt.dataroot    
+        # Force opt.dataroot to be an absolute path string to prevent relative path drops
+        self.root = os.path.abspath(opt.dataroot) 
 
-        ### input A (label maps)
+        ### input A (label maps / Sonar Inputs)
         dir_A = '_A' if self.opt.label_nc == 0 else '_label'
-        self.dir_A = os.path.join(opt.dataroot, opt.phase + dir_A)
+        self.dir_A = os.path.join(self.root, opt.phase + dir_A) # Use self.root
         self.A_paths = sorted(make_dataset(self.dir_A))
 
-        ### input B (real images)
-        if opt.isTrain or opt.use_encoded_image:
-            dir_B = '_B' if self.opt.label_nc == 0 else '_img'
-            self.dir_B = os.path.join(opt.dataroot, opt.phase + dir_B)  
-            self.B_paths = sorted(make_dataset(self.dir_B))
+        ### input B (real images / Optical Targets)
+        dir_B = '_B' if self.opt.label_nc == 0 else '_img'
+        self.dir_B = os.path.join(self.root, opt.phase + dir_B) # Use self.root 
+        self.B_paths = sorted(make_dataset(self.dir_B))
 
         ### instance maps
         if not opt.no_instance:
-            self.dir_inst = os.path.join(opt.dataroot, opt.phase + '_inst')
+            self.dir_inst = os.path.join(self.root, opt.phase + '_inst')
             self.inst_paths = sorted(make_dataset(self.dir_inst))
 
         ### load precomputed instance-wise encoded features
         if opt.load_features:                              
-            self.dir_feat = os.path.join(opt.dataroot, opt.phase + '_feat')
+            self.dir_feat = os.path.join(self.root, opt.phase + '_feat')
             print('----------- loading features from %s ----------' % self.dir_feat)
             self.feat_paths = sorted(make_dataset(self.dir_feat))
 
-        self.dataset_size = len(self.A_paths) 
+        self.dataset_size = len(self.A_paths)
       
     def __getitem__(self, index):        
         ### input A (label maps)
@@ -45,8 +45,9 @@ class AlignedDataset(BaseDataset):
             A_tensor = transform_A(A) * 255.0
 
         B_tensor = inst_tensor = feat_tensor = 0
-        ### input B (real images)
-        if self.opt.isTrain or self.opt.use_encoded_image:
+        
+        ### input B (real images) - Safe check for image retrieval
+        if len(self.B_paths) > 0:
             B_path = self.B_paths[index]   
             B = Image.open(B_path).convert('RGB')
             transform_B = get_transform(self.opt, params)      
@@ -70,7 +71,7 @@ class AlignedDataset(BaseDataset):
         return input_dict
 
     def __len__(self):
-        return len(self.A_paths) // self.opt.batchSize * self.opt.batchSize
+        return len(self.A_paths)
 
     def name(self):
         return 'AlignedDataset'

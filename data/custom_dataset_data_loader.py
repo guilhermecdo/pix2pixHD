@@ -18,6 +18,12 @@ class CustomDatasetDataLoader(BaseDataLoader):
     def initialize(self, opt):
         BaseDataLoader.initialize(self, opt)
         self.dataset = CreateDataset(opt)
+
+        # ADD THESE THREE LINES RIGHT HERE:
+        print(f"--> DEBUG: len(A_paths) = {len(self.dataset.A_paths)}")
+        print(f"--> DEBUG: len(B_paths) = {len(self.dataset.B_paths)}")
+        print(f"--> DEBUG: dataset size = {len(self.dataset)}")
+
         self.dataloader = torch.utils.data.DataLoader(
             self.dataset,
             batch_size=opt.batchSize,

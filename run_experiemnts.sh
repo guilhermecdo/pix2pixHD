@@ -3,16 +3,18 @@
 # Configuration
 RAW_SRC=~/git/pix2pixHD/CroppedImages/CroppedImages
 BASE_DATASET_DIR="./datasets/Oculus2Didson"
-MODES=("pad" "interp")
-SIZES=(128 256)
-TRAIN_PERCENTAGES=(0.6 0.7 0.8 0.9)
+#MODES=("pad" "interp")
+MODES=("")
+SIZES=(128)
+TRAIN_PERCENTAGES=(1)
 
 # Loop through every combination
 for MODE in "${MODES[@]}"; do
     for SIZE in "${SIZES[@]}"; do
         for PERC in "${TRAIN_PERCENTAGES[@]}"; do
             
-            EXP_NAME="Exp_${MODE}_${SIZE}_p${PERC}"
+            #EXP_NAME="Exp_${MODE}_${SIZE}_p${PERC}"
+            EXP_NAME="holoocean-didsion"
             CURRENT_DST="${BASE_DATASET_DIR}_${EXP_NAME}"
             
             echo "=========================================================="
@@ -54,7 +56,7 @@ for MODE in "${MODES[@]}"; do
 
             # 5. GENERATE VISUAL REPORTS
 
-            RESULTS_DIR="./results/${EXP_NAME}/test_latest/images"
+            RESULTS_DIR="./results/${EXP_NAME}/test_latest/images/"
             REPORT_DIR="./results/${EXP_NAME}/Report_Standard"
             JET_DIR="./results/${EXP_NAME}/Report_JET"
 
