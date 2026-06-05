@@ -5,8 +5,8 @@
 # 1. PATH CONFIGURATION
 # ==========================================
 RAW_DATA_ROOT="/home/guilherme/git/pix2pixHD/datasets/Sonar2Optical"
-STAGE_SUBSET="./datasets/s2o_subset_color"
-STAGE_GRAYSCALE="./datasets/s2o_subset_grayscale"
+#STAGE_SUBSET="./datasets/s2o_subset_color"
+STAGE_GRAYSCALE="./datasets/s2o_grayscale"
 IMG_SIZE=512
 
 echo "========================================================="
@@ -45,7 +45,7 @@ for PHASE in "train" "test"; do
     fi
 
     idx_counter=0
-    for ((i=0; i<limit; i+=5)); do
+    for ((i=0; i<limit; i+=1)); do
         file_A="${files_A[$i]}"
         file_B="${files_B[$i]}"
         
@@ -79,10 +79,10 @@ done
 # ==========================================
 # 2. RUN EXPERIMENT 1: 1/5 COLOR SUBSET
 # ==========================================
-EXP_1="s2o_1fifth_color"
-echo "---------------------------------------------------------"
-echo ">>> [EXPERIMENT 1/2] Training on 1/5 Color Data Split..."
-echo "---------------------------------------------------------"
+# EXP_1="s2o_1fifth_color"
+# echo "---------------------------------------------------------"
+# echo ">>> [EXPERIMENT 1/2] Training on 1/5 Color Data Split..."
+# echo "---------------------------------------------------------"
 
 # python3 train.py --name "$EXP_1" --dataroot "$STAGE_SUBSET" \
 #   --no_instance --label_nc 0 \
@@ -90,38 +90,38 @@ echo "---------------------------------------------------------"
 #   --nThreads 0 --gpu_ids 0 --no_vgg_loss --batchSize 6 \
 #   --niter 100 --niter_decay 100 --save_epoch_freq 50
 
-echo ">>> Inference & Reporting for Experiment 1..."
-python3 test.py --name "$EXP_1" --dataroot "$STAGE_SUBSET" \
-  --no_instance --label_nc 0 \
-  --resize_or_crop resize_and_crop --loadSize $IMG_SIZE --fineSize $IMG_SIZE \
-  --nThreads 0 --gpu_ids 0 --how_many 500
-
-python3 build_final_report.py --results_dir "./results/${EXP_1}/test_latest/images" --dataset_dir "$STAGE_SUBSET"
-python3 create_results_video.py --results_dir "./results/${EXP_1}/test_latest/images" --output_video "./results/${EXP_1}_summary.mp4"
-
-# ==========================================
-# 3. RUN EXPERIMENT 2: 1/5 GRAYSCALE SUBSET
-# ==========================================
-# EXP_2="s2o_1fifth_grayscale"
-# echo "---------------------------------------------------------"
-# echo ">>> [EXPERIMENT 2/2] Training on 1/5 Grayscale Data Split..."
-# echo "---------------------------------------------------------"
-
-# python3 train.py --name "$EXP_2" --dataroot "$STAGE_GRAYSCALE" \
-#   --no_instance --label_nc 0 \
-#   --resize_or_crop resize_and_crop --loadSize $IMG_SIZE --fineSize $IMG_SIZE \
-#   --nThreads 0 --gpu_ids 0 --no_vgg_loss --batchSize 1 \
-#   --niter 100 --niter_decay 100 --save_epoch_freq 5
-
-# echo ">>> Inference & Reporting for Experiment 2..."
-# python3 test.py --name "$EXP_2" --dataroot "$STAGE_GRAYSCALE" \
+# echo ">>> Inference & Reporting for Experiment 1..."
+# python3 test.py --name "$EXP_1" --dataroot "$STAGE_SUBSET" \
 #   --no_instance --label_nc 0 \
 #   --resize_or_crop resize_and_crop --loadSize $IMG_SIZE --fineSize $IMG_SIZE \
 #   --nThreads 0 --gpu_ids 0 --how_many 500
 
-# python3 build_final_report.py --results_dir "./results/${EXP_2}/test_latest/images" --dataset_dir "$STAGE_GRAYSCALE"
-# python3 create_results_video.py --results_dir "./results/${EXP_2}/test_latest/images" --output_video "./results/${EXP_2}_summary.mp4"
+# python3 build_final_report.py --results_dir "./results/${EXP_1}/test_latest/images" --dataset_dir "$STAGE_SUBSET"
+# python3 create_results_video.py --results_dir "./results/${EXP_1}/test_latest/images" --output_video "./results/${EXP_1}_summary.mp4"
 
-# echo "========================================================="
-# echo " All experiments processed successfully! "
-# echo "========================================================="
+# ==========================================
+# 3. RUN EXPERIMENT 2: 1/5 GRAYSCALE SUBSET
+# ==========================================
+EXP_2="s2o_grayscale"
+echo "---------------------------------------------------------"
+echo ">>> [EXPERIMENT 2/2] Training on 1/5 Grayscale Data Split..."
+echo "---------------------------------------------------------"
+
+python3 train.py --name "$EXP_2" --dataroot "$STAGE_GRAYSCALE" \
+  --no_instance --label_nc 0 \
+  --resize_or_crop resize_and_crop --loadSize $IMG_SIZE --fineSize $IMG_SIZE \
+  --nThreads 0 --gpu_ids 0 --no_vgg_loss --batchSize 1 \
+  --niter 100 --niter_decay 100 --save_epoch_freq 5
+
+echo ">>> Inference & Reporting for Experiment 2..."
+python3 test.py --name "$EXP_2" --dataroot "$STAGE_GRAYSCALE" \
+  --no_instance --label_nc 0 \
+  --resize_or_crop resize_and_crop --loadSize $IMG_SIZE --fineSize $IMG_SIZE \
+  --nThreads 0 --gpu_ids 0 --how_many 500
+
+python3 build_final_report.py --results_dir "./results/${EXP_2}/test_latest/images" --dataset_dir "$STAGE_GRAYSCALE"
+python3 create_results_video.py --results_dir "./results/${EXP_2}/test_latest/images" --output_video "./results/${EXP_2}_summary.mp4"
+
+echo "========================================================="
+echo " All experiments processed successfully! "
+echo "========================================================="
