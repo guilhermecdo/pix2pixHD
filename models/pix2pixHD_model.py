@@ -37,14 +37,23 @@ class Pix2PixHDModel(BaseModel):
                                       opt.n_blocks_local, opt.norm, gpu_ids=self.gpu_ids)        
 
         # Discriminator network
+        # Discriminator network
         if self.isTrain:
             use_sigmoid = opt.no_lsgan
-            netD_input_nc = input_nc + opt.output_nc
-            if not opt.no_instance:
+            
+            # -------------------------------------------------------------------------
+            # MODIFIED FOR ASYMMETRIC DIMENSIONS:
+            # Force netD_input_nc to only match the target output channels (1 channel)
+            # -------------------------------------------------------------------------
+            netD_input_nc = opt.output_nc 
+            
+            # Force no_instance true here for the discriminator setup step
+            # to prevent it from adding an extra instance channel to netD_input_nc
+            if not opt.no_instance and False: 
                 netD_input_nc += 1
+                
             self.netD = networks.define_D(netD_input_nc, opt.ndf, opt.n_layers_D, opt.norm, use_sigmoid, 
                                           opt.num_D, not opt.no_ganFeat_loss, gpu_ids=self.gpu_ids)
-
         ### Encoder network
         if self.gen_features:          
             self.netE = networks.define_G(opt.output_nc, opt.feat_num, opt.nef, 'encoder', 
@@ -142,12 +151,22 @@ class Pix2PixHDModel(BaseModel):
         return input_label, inst_map, real_image, feat_map
 
     def discriminate(self, input_label, test_image, use_pool=False):
-        input_concat = torch.cat((input_label, test_image.detach()), dim=1)
-        if use_pool:            
+        # Kept our custom fix: completely skip 'input_label' concatenation
+        input_concat = test_image.detach()
+        
+        # -------------------------------------------------------------------------
+        # NEW FIX: Force 1-channel tensors to match the 3-channel Discriminator
+        # If input_concat has 1 channel [batch, 1, H, W], expand it to 3 channels
+        # -------------------------------------------------------------------------
+        if input_concat.size(1) == 1:
+            input_concat = torch.cat((input_concat, input_concat, input_concat), dim=1)
+            
+        # If use_pool is active, sample from the fake image history buffer
+        if use_pool:
             fake_query = self.fake_pool.query(input_concat)
             return self.netD.forward(fake_query)
-        else:
-            return self.netD.forward(input_concat)
+            
+        return self.netD.forward(input_concat)
 
     def forward(self, label, inst, image, feat, infer=False):
         # Encode Inputs
@@ -167,11 +186,11 @@ class Pix2PixHDModel(BaseModel):
         loss_D_fake = self.criterionGAN(pred_fake_pool, False)        
 
         # Real Detection and Loss        
-        pred_real = self.discriminate(input_label, real_image)
+        pred_real = self.discriminate(input_label, real_image, use_pool=False)
         loss_D_real = self.criterionGAN(pred_real, True)
 
         # GAN loss (Fake Passability Loss)        
-        pred_fake = self.netD.forward(torch.cat((input_label, fake_image), dim=1))        
+        pred_fake = self.discriminate(input_label, fake_image, use_pool=False)
         loss_G_GAN = self.criterionGAN(pred_fake, True)               
         
         # GAN feature matching loss
@@ -205,7 +224,8 @@ class Pix2PixHDModel(BaseModel):
             else:
                 # sample clusters from precomputed features             
                 feat_map = self.sample_features(inst_map)
-            input_concat = torch.cat((input_label, feat_map), dim=1)                        
+            #input_concat = torch.cat((input_label, feat_map), dim=1)
+            input_concat = real_image                        
         else:
             input_concat = input_label        
            

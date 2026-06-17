@@ -181,34 +181,61 @@ class LocalEnhancer(nn.Module):
         return output_prev
 
 class GlobalGenerator(nn.Module):
-    def __init__(self, input_nc, output_nc, ngf=64, n_downsampling=3, n_blocks=9, norm_layer=nn.BatchNorm2d, 
-                 padding_type='reflect'):
-        assert(n_blocks >= 0)
-        super(GlobalGenerator, self).__init__()        
-        activation = nn.ReLU(True)        
-
-        model = [nn.ReflectionPad2d(3), nn.Conv2d(input_nc, ngf, kernel_size=7, padding=0), norm_layer(ngf), activation]
-        ### downsample
-        for i in range(n_downsampling):
-            mult = 2**i
-            model += [nn.Conv2d(ngf * mult, ngf * mult * 2, kernel_size=3, stride=2, padding=1),
-                      norm_layer(ngf * mult * 2), activation]
-
-        ### resnet blocks
-        mult = 2**n_downsampling
-        for i in range(n_blocks):
-            model += [ResnetBlock(ngf * mult, padding_type=padding_type, activation=activation, norm_layer=norm_layer)]
+    # Added n_downsample=4 to the signature to absorb the extra positional argument safely
+    def __init__(self, input_nc, output_nc, ngf=64, n_downsample=4, n_blocks=9, norm_layer=nn.BatchNorm2d):
+        super(GlobalGenerator, self).__init__()
         
-        ### upsample         
-        for i in range(n_downsampling):
-            mult = 2**(n_downsampling - i)
-            model += [nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2), kernel_size=3, stride=2, padding=1, output_padding=1),
-                       norm_layer(int(ngf * mult / 2)), activation]
-        model += [nn.ReflectionPad2d(3), nn.Conv2d(ngf, output_nc, kernel_size=7, padding=0), nn.Tanh()]        
-        self.model = nn.Sequential(*model)
-            
-    def forward(self, input):
-        return self.model(input)             
+        # FORCE input_nc to 3 to handle the standard PyTorch RGB dataset wrapper smoothly
+        # This acts as a protective buffer for your raw data stream
+        effective_input_nc = 3 
+        
+        ### 1. FRONT END (Safely accepts 3-channel inputs, squashes to 64 feature maps)
+        model_encoder = [nn.ReflectionPad2d(3), 
+                         nn.Conv2d(effective_input_nc, ngf, kernel_size=7, padding=0), 
+                         norm_layer(ngf), nn.ReLU(True)]
+        
+        ### 2. ENCODER DOWNSAMPLING (512x96 -> 256x48 -> 128x24 -> 64x12 -> 32x6)
+        mult = 1
+        for i in range(4): 
+            model_encoder += [nn.Conv2d(ngf * mult, ngf * mult * 2, kernel_size=3, stride=2, padding=1),
+                              norm_layer(ngf * mult * 2), nn.ReLU(True)]
+            mult *= 2
+
+        ### 3. BOTTLENECK SPATIAL TRANSLATION (Compresses Height from 32 down to 3)
+        self.spatial_bridge = nn.Sequential(
+            nn.Conv2d(ngf * mult, ngf * mult, kernel_size=(6, 1), stride=(2, 1), padding=(1, 0)), # 32 -> 15
+            nn.ReLU(True),
+            nn.Conv2d(ngf * mult, ngf * mult, kernel_size=(5, 1), stride=(2, 1), padding=(1, 0)), # 15 -> 7
+            nn.ReLU(True),
+            nn.Conv2d(ngf * mult, ngf * mult, kernel_size=(3, 1), stride=(2, 1), padding=(0, 0))  # 7 -> 3
+        )
+
+        ### 4. RESIDUAL BLOCKS (Operating at the deep 3x6 feature map abstraction space)
+        model_res = []
+        for i in range(n_blocks):
+            model_res += [ResnetBlock(ngf * mult, padding_type='reflect', norm_layer=norm_layer)]
+
+        ### 5. DECODER UPSAMPLING (3x6 -> 6x12 -> 12x24 -> 24x48 -> 48x96)
+        model_decoder = []
+        for i in range(4): # Retaining your hardcoded 4 structural steps
+            model_decoder += [nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2), kernel_size=3, stride=2, padding=1, output_padding=1),
+                              norm_layer(int(ngf * mult / 2)), nn.ReLU(True)]
+            mult = int(mult / 2)
+
+        ### 6. OUTPUT LAYER (Emits single-channel 48x96 target)
+        model_decoder += [nn.ReflectionPad2d(3), 
+                         nn.Conv2d(ngf, output_nc, kernel_size=7, padding=0), 
+                         nn.Tanh()]
+
+        self.model_encoder = nn.Sequential(*model_encoder)
+        self.model_res = nn.Sequential(*model_res)
+        self.model_decoder = nn.Sequential(*model_decoder)
+
+    def forward(self, input, inst=None):
+        features = self.model_encoder(input)
+        bridged_features = self.spatial_bridge(features) 
+        res_features = self.model_res(bridged_features)
+        return self.model_decoder(res_features)   
         
 # Define a resnet block
 class ResnetBlock(nn.Module):
@@ -332,6 +359,7 @@ class MultiscaleDiscriminator(nn.Module):
         
 # Defines the PatchGAN discriminator with the specified arguments.
 class NLayerDiscriminator(nn.Module):
+
     def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, use_sigmoid=False, getIntermFeat=False):
         super(NLayerDiscriminator, self).__init__()
         self.getIntermFeat = getIntermFeat
@@ -339,7 +367,14 @@ class NLayerDiscriminator(nn.Module):
 
         kw = 4
         padw = int(np.ceil((kw-1.0)/2))
-        sequence = [[nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw), nn.LeakyReLU(0.2, True)]]
+        
+        # -------------------------------------------------------------------------
+        # MODIFIED FOR ASYMMETRIC CHANNELS:
+        # Force the first layer to accept 3 channels from the native RGB image loader
+        # -------------------------------------------------------------------------
+        effective_input_nc = 3
+        
+        sequence = [[nn.Conv2d(effective_input_nc, ndf, kernel_size=kw, stride=2, padding=padw), nn.LeakyReLU(0.2, True)]]
 
         nf = ndf
         for n in range(1, n_layers):
