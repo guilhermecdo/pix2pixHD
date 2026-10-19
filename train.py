@@ -72,8 +72,8 @@ if __name__ == '__main__':
             loss_dict = dict(zip(model.module.loss_names, losses))
 
             # Calculate scalars for display
-            loss_D = (loss_dict['D_fake'] + loss_dict['D_real']) * 0.5
-            loss_G = loss_dict['G_GAN'] + loss_dict.get('G_GAN_Feat', 0) + loss_dict.get('G_VGG', 0)
+            loss_D = (loss_dict['D_fake'] + loss_dict['D_real']) * 0.5  #lambda_D = 0.5 
+            loss_G = (loss_dict['G_GAN'] + loss_dict.get('G_GAN_Feat', 0) + loss_dict.get('G_VGG', 0))*1
 
             ############### Backward Pass ####################
             # Update Generator

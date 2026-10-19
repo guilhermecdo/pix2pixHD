@@ -4,9 +4,10 @@
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
-RAW_DATA_ROOT="./datasets/Sonar2Optical"
-STAGE_DATA_ROOT="./datasets/sonar2optical_matched"
-EXP_NAME="sonar2optical_exp"
+#RAW_DATA_ROOT="./datasets/Sonar2Optical-1-view"
+STAGE_DATA_ROOT="/home/guilherme/git/pix2pixHD/datasets/DidsonFullSet_Cleaned_2"
+EXP_NAME="didson_cleaned_G_4"
+#START_CHECKPOINT="/home/guilherme/git/pix2pixHD/checkpoints/sonar2optical_video_1/"
 
 # echo "========================================================="
 # echo "   Starting Sonar to Optical Master Training Pipeline   "
@@ -79,29 +80,31 @@ EXP_NAME="sonar2optical_exp"
 # ==========================================
 # 3. RUN TRAINING
 # ==========================================
-# echo "[STEP 2/4] Initializing Network Training..."
+echo "[STEP 2/4] Initializing Network Training..."
 
-# python3 train.py --name "$EXP_NAME" \
-#   --dataroot "$STAGE_DATA_ROOT" \
-#   --no_instance --label_nc 0 \
-#   --resize_or_crop resize_and_crop --loadSize 512 --fineSize 512 \
-#   --nThreads 0 --gpu_ids 0 --no_vgg_loss \
-#   --batchSize 4 --save_epoch_freq 5 --print_freq 5 \
-#   --niter 100 --niter_decay 100
-# echo "---------------------------------------------------------"
+python3 train.py --name "$EXP_NAME" \
+  --dataroot "$STAGE_DATA_ROOT" \
+  --no_instance --label_nc 0 \
+  --resize_or_crop resize_and_crop --loadSize 720 --fineSize 720 \
+  --nThreads 0 --gpu_ids 0 --no_vgg_loss \
+  --batchSize 4 --save_epoch_freq 5 --print_freq 5 \
+  --niter 100 --niter_decay 100 \
+  #--load_pretrain "$START_CHECKPOINT"
+echo "---------------------------------------------------------"
 
-# ==========================================
-# 4. RUN TESTING / INFERENCE
-# ==========================================
+==========================================
+4. RUN TESTING / INFERENCE
+==========================================
 echo "[STEP 3/4] Running Inference over Test Dataset Split..."
 
 # Ensure --resize_or_crop, --loadSize, and --fineSize match training exactly!
 python3 test2.py --name "$EXP_NAME" \
   --dataroot "$STAGE_DATA_ROOT" \
   --no_instance --label_nc 0 \
-  --resize_or_crop resize_and_crop --loadSize 512 --fineSize 512 \
+  --resize_or_crop resize_and_crop --loadSize 720 --fineSize 720 \
   --nThreads 0 --gpu_ids 0 \
-  --how_many 2000
+  --how_many 2000 \
+  #--which_epoch 105
 
 echo "---------------------------------------------------------"
 

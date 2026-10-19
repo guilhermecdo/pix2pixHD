@@ -20,10 +20,10 @@ def make_video(results_dir, output_video, fps, img_size):
     res_path = Path(results_dir).resolve()
     
     # 1. Find all synthesized images to use as the base indexing loop
-    synthesized_files = sorted(list(res_path.glob("*_synthesized_image.jpg")))
+    synthesized_files = sorted(list(res_path.glob("*_synthesized Image.jpg")))
     
     if not synthesized_files:
-        print(f"Error: No '_synthesized_image.jpg' files found in {results_dir}")
+        print(f"Error: No '_synthesized Image.jpg' files found in {results_dir}")
         print("Make sure you run test.py and build your report scripts first!")
         return
 
@@ -42,17 +42,17 @@ def make_video(results_dir, output_video, fps, img_size):
     count = 0
     for gen_file in synthesized_files:
         # Extract the base frame identifier index (e.g., frame_00001)
-        prefix = gen_file.name.replace("_synthesized_image.jpg", "")
+        prefix = gen_file.name.replace("_synthesized Image.jpg", "")
         
         # Define paths for your specific ordered sequence matching your new test bindings
-        sonar_file = res_path / f"{prefix}_src_oculus.jpg"
-        true_opt_file = res_path / f"{prefix}_gt_didson.jpg"  # The real target array
+        sonar_file = res_path / f"{prefix}_Input Label.jpg"
+        true_opt_file = res_path / f"{prefix}_Real Image.jpg"  # The real target array
         
         # Verify all three elements exist before constructing the video block frame
         if not sonar_file.exists() or not true_opt_file.exists  ():
             # Fallback check if the script used old naming configurations
-            sonar_file = res_path / f"{prefix}_report_input.jpg"
-            true_opt_file = res_path / f"{prefix}_report_gt.jpg"
+            sonar_file = res_path / f"{prefix}_Input Label.jpg"
+            true_opt_file = res_path / f"{prefix}_Real Image.jpg"
             
             if not sonar_file.exists():
                 print(f"Skipping missing sequence pair for layout ID: {prefix}")
